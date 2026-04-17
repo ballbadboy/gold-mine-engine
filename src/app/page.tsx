@@ -109,10 +109,14 @@ export default async function Home() {
           </Card>
         </section>
 
-        <footer className="text-center text-xs text-muted-foreground">
-          <p>
-            Next: Sprint 2 — LLM clients (Claude/Gemini) · <a href="/api/health" className="underline">API Health</a>
-          </p>
+        <footer className="flex items-center justify-center gap-4 text-center text-xs text-muted-foreground">
+          <a href="/content" className="underline">Content Library</a>
+          <span>·</span>
+          <a href="/api/health" className="underline">Health</a>
+          <span>·</span>
+          <a href="/api/ai/status" className="underline">AI Status</a>
+          <span>·</span>
+          <a href="/api/content" className="underline">Content API</a>
         </footer>
       </div>
     </main>
