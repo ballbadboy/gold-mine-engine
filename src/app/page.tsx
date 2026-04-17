@@ -1,65 +1,131 @@
-import Image from "next/image";
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+export const dynamic = 'force-dynamic';
+
+interface Tenant {
+  id: string;
+  slug: string;
+  name: string;
+  plan: string;
+}
+
+async function getTenants(): Promise<{ ok: boolean; tenants: Tenant[]; error?: string }> {
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from('tenants')
+      .select('id, slug, name, plan')
+      .order('created_at', { ascending: true });
+
+    if (error) return { ok: false, tenants: [], error: error.message };
+    return { ok: true, tenants: data ?? [] };
+  } catch (e: unknown) {
+    return { ok: false, tenants: [], error: e instanceof Error ? e.message : 'Unknown error' };
+  }
+}
+
+const SYSTEMS = [
+  { name: 'Next.js 16', status: 'ok', note: 'App Router + Turbopack' },
+  { name: 'Tailwind CSS 4', status: 'ok', note: 'PostCSS pipeline' },
+  { name: 'shadcn/ui', status: 'ok', note: 'base-nova + neutral' },
+  { name: 'Supabase', status: 'pending', note: 'checking...' },
+  { name: 'Claude API', status: 'off', note: 'Sprint 2' },
+  { name: 'GA4 MCP', status: 'off', note: 'Sprint 2' },
+  { name: 'OODA Loop', status: 'off', note: 'Sprint 3' },
+] as const;
+
+export default async function Home() {
+  const result = await getTenants();
+  const systems = SYSTEMS.map((s) =>
+    s.name === 'Supabase'
+      ? { ...s, status: result.ok ? 'ok' : 'error', note: result.ok ? `${result.tenants.length} tenant(s)` : result.error ?? 'error' }
+      : s
   );
+
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-5xl px-6 py-16">
+        <header className="mb-12 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight">🏆 Gold Mine Engine</h1>
+            <p className="mt-2 text-muted-foreground">
+              Self-optimizing growth system — affiliate + SEO + ads loop
+            </p>
+          </div>
+          <Badge variant="secondary" className="text-sm">Sprint 1 · Foundation</Badge>
+        </header>
+
+        <section className="mb-10">
+          <h2 className="mb-4 text-xl font-semibold">System Status</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {systems.map((s) => (
+              <Card key={s.name}>
+                <CardContent className="flex items-center justify-between p-4">
+                  <div>
+                    <p className="font-medium">{s.name}</p>
+                    <p className="text-xs text-muted-foreground">{s.note}</p>
+                  </div>
+                  <StatusBadge status={s.status} />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-10">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tenants</CardTitle>
+              <CardDescription>Multi-tenant ready from day 1 — 1 row = you (owner)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {result.ok ? (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="pb-2 font-medium">Slug</th>
+                      <th className="pb-2 font-medium">Name</th>
+                      <th className="pb-2 font-medium">Plan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.tenants.map((t) => (
+                      <tr key={t.id} className="border-b last:border-0">
+                        <td className="py-2 font-mono text-xs">{t.slug}</td>
+                        <td className="py-2">{t.name}</td>
+                        <td className="py-2">
+                          <Badge variant="outline">{t.plan}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-sm text-destructive">⚠️ {result.error}</p>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        <footer className="text-center text-xs text-muted-foreground">
+          <p>
+            Next: Sprint 2 — LLM clients (Claude/Gemini) · <a href="/api/health" className="underline">API Health</a>
+          </p>
+        </footer>
+      </div>
+    </main>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { label: string; className: string }> = {
+    ok: { label: '✓ OK', className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' },
+    pending: { label: '… Pending', className: 'bg-amber-500/10 text-amber-700 dark:text-amber-400' },
+    error: { label: '✗ Error', className: 'bg-red-500/10 text-red-700 dark:text-red-400' },
+    off: { label: '○ Off', className: 'bg-muted text-muted-foreground' },
+  };
+  const c = config[status] ?? config.off;
+  return <span className={`rounded-md px-2 py-1 text-xs font-medium ${c.className}`}>{c.label}</span>;
 }
