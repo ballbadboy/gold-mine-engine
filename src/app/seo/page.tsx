@@ -1,7 +1,14 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { buildKeywordPlan, clusterByPillar, clusterByIntent } from '@/lib/seo/keywords';
+import {
+  buildKeywordPlan,
+  clusterByPillar,
+  clusterByIntent,
+  listNiches,
+  getNicheConfig,
+  NICHES,
+} from '@/lib/seo/keywords';
 import { BulkTrigger } from './bulk-trigger';
 
 export const dynamic = 'force-dynamic';
@@ -20,10 +27,19 @@ const TYPE_EMOJI: Record<string, string> = {
   guide: '🗺️',
 };
 
-export default function SeoPage() {
-  const plan = buildKeywordPlan();
+export default async function SeoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ niche?: string }>;
+}) {
+  const { niche: qNiche } = await searchParams;
+  const nicheId = qNiche && NICHES[qNiche] ? qNiche : 'longevity';
+  const cfg = getNicheConfig(nicheId);
+
+  const plan = buildKeywordPlan(nicheId);
   const byPillar = clusterByPillar(plan);
   const byIntent = clusterByIntent(plan);
+  const niches = listNiches();
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -35,13 +51,31 @@ export default function SeoPage() {
             <Link href="/" className="text-sm text-muted-foreground hover:underline">← Dashboard</Link>
           </div>
           <div className="flex items-start justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <h1 className="text-3xl font-bold tracking-tight">🗂️ Programmatic SEO</h1>
               <p className="mt-1 text-muted-foreground">
-                {plan.length} keyword targets · {Object.keys(byPillar).length} topic clusters
+                {cfg.label} · <span className="font-mono text-xs">{cfg.domain}</span> · {plan.length} keywords · {Object.keys(byPillar).length} pillars
               </p>
             </div>
-            <Badge variant="secondary" className="text-sm shrink-0">Sprint 5</Badge>
+            <Badge variant="secondary" className="text-sm shrink-0">Sprint 7</Badge>
+          </div>
+
+          {/* Niche switcher */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {niches.map((n) => (
+              <Link
+                key={n.id}
+                href={`/seo?niche=${n.id}`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium border transition-colors ${
+                  n.id === nicheId
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'border-border text-muted-foreground hover:border-foreground hover:text-foreground'
+                }`}
+              >
+                {n.label}
+                <span className="ml-1.5 opacity-70">· {n.pageCount}</span>
+              </Link>
+            ))}
           </div>
         </header>
 
@@ -63,14 +97,14 @@ export default function SeoPage() {
           ))}
         </div>
 
-        {/* Bulk generate — all pages */}
+        {/* Bulk generate — all pages for this niche */}
         <Card className="mb-8 border-dashed">
           <CardContent className="py-4 px-5">
-            <p className="text-sm font-medium mb-2">⚡ Bulk Generate — All {plan.length} pages</p>
+            <p className="text-sm font-medium mb-2">⚡ Bulk Generate — {plan.length} pages for <span className="font-mono">{cfg.domain}</span></p>
             <p className="text-xs text-muted-foreground mb-3">
-              Runs 5 pages per batch · 3 parallel AI calls · idempotent (safe to re-run)
+              5 pages per batch · 3 parallel AI calls · idempotent
             </p>
-            <BulkTrigger totalInPillar={plan.length} />
+            <BulkTrigger niche={nicheId} totalInPillar={plan.length} />
           </CardContent>
         </Card>
 
@@ -83,7 +117,7 @@ export default function SeoPage() {
                   <CardTitle className="text-base">{pillar}</CardTitle>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">{entries.length} pages</span>
-                    <BulkTrigger pillar={pillar} totalInPillar={entries.length} />
+                    <BulkTrigger niche={nicheId} pillar={pillar} totalInPillar={entries.length} />
                   </div>
                 </div>
               </CardHeader>

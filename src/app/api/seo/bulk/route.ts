@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { buildKeywordPlan } from '@/lib/seo/keywords';
+import { buildKeywordPlan, getNicheConfig, NICHES } from '@/lib/seo/keywords';
 import { generateOutline } from '@/lib/content/generate';
 import type { ProviderName } from '@/lib/ai';
 
@@ -9,14 +9,15 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 const bodySchema = z.object({
-  website_domain: z.string().default('longevity-th.com'),
-  pillar: z.string().optional(),          // filter to one cluster
+  niche: z.string().default('longevity'),                     // niche registry key
+  website_domain: z.string().optional(),                       // overrides NICHES[niche].domain
+  pillar: z.string().optional(),
   intent: z.enum(['informational', 'commercial', 'transactional']).optional(),
-  limit: z.number().int().min(1).max(20).default(10), // pages per run
-  offset: z.number().int().min(0).default(0),         // pagination
+  limit: z.number().int().min(1).max(20).default(10),
+  offset: z.number().int().min(0).default(0),
   concurrency: z.number().int().min(1).max(5).default(3),
   provider: z.enum(['claude', 'gemini', 'openrouter']).optional(),
-  language: z.enum(['th', 'en']).default('th'),
+  language: z.enum(['th', 'en']).optional(),                   // overrides niche default
 });
 
 /** Run at most `concurrency` async tasks in parallel, queue the rest. */
@@ -26,7 +27,6 @@ async function concurrentPool<T>(
 ): Promise<Array<{ ok: true; value: T } | { ok: false; error: string }>> {
   const results: Array<{ ok: true; value: T } | { ok: false; error: string }> = [];
   const queue = [...tasks];
-  const running: Promise<void>[] = [];
 
   async function runNext(): Promise<void> {
     const task = queue.shift();
@@ -40,6 +40,7 @@ async function concurrentPool<T>(
     await runNext();
   }
 
+  const running: Promise<void>[] = [];
   for (let i = 0; i < Math.min(concurrency, tasks.length); i++) {
     running.push(runNext());
   }
@@ -58,30 +59,42 @@ export async function POST(req: Request) {
       );
     }
 
-    const { website_domain, pillar, intent, limit, offset, concurrency, provider, language } =
+    const { niche, website_domain, pillar, intent, limit, offset, concurrency, provider, language } =
       parsed.data;
 
+    if (!NICHES[niche]) {
+      return NextResponse.json(
+        { ok: false, error: `Unknown niche: ${niche}`, available: Object.keys(NICHES) },
+        { status: 400 },
+      );
+    }
+
+    const cfg = getNicheConfig(niche);
+    const domain = website_domain ?? cfg.domain;
+    const lang = language ?? cfg.language;
+
     // Build and filter the keyword plan
-    let plan = buildKeywordPlan();
+    let plan = buildKeywordPlan(niche);
     if (pillar) plan = plan.filter((e) => e.pillar === pillar);
     if (intent) plan = plan.filter((e) => e.intent === intent);
     const batch = plan.slice(offset, offset + limit);
 
     if (batch.length === 0) {
-      return NextResponse.json({ ok: true, generated: 0, skipped: 0, failed: 0, pages: [] });
+      return NextResponse.json({
+        ok: true, niche, domain, generated: 0, failed: 0, batch_size: 0, pages: []
+      });
     }
 
-    // Build generation tasks
     const tasks = batch.map((entry) => () =>
       generateOutline({
         topic: entry.topic,
-        niche: 'Longevity',
+        niche: cfg.niche,
         type: entry.type,
-        language,
+        language: lang,
         targetKeyword: entry.targetKeyword,
-        affiliateContext: 'longevity supplements sold in Thailand — affiliate links to iHerb, Lazada, Shopee',
+        affiliateContext: cfg.affiliateContext,
         tenantSlug: 'owner',
-        websiteDomain: website_domain,
+        websiteDomain: domain,
         provider: provider as ProviderName | undefined,
         maxTokens: 4000,
       }).then((result) => ({ entry, result })),
@@ -100,6 +113,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
+      niche,
+      domain,
       total_in_plan: plan.length,
       batch_size: batch.length,
       offset,
@@ -112,25 +127,4 @@ export async function POST(req: Request) {
     const message = e instanceof Error ? e.message : 'Unknown error';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
-}
-
-/** GET — show plan stats, current batch preview */
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const pillar = url.searchParams.get('pillar') ?? undefined;
-  const intent = (url.searchParams.get('intent') ?? undefined) as
-    | 'informational'
-    | 'commercial'
-    | 'transactional'
-    | undefined;
-
-  let plan = buildKeywordPlan();
-  if (pillar) plan = plan.filter((e) => e.pillar === pillar);
-  if (intent) plan = plan.filter((e) => e.intent === intent);
-
-  return NextResponse.json({
-    ok: true,
-    total: plan.length,
-    preview: plan.slice(0, 10).map((e) => ({ slug: e.slug, keyword: e.keyword, intent: e.intent, pillar: e.pillar })),
-  });
 }

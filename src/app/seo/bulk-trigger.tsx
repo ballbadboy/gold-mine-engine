@@ -15,11 +15,12 @@ interface BulkResult {
 }
 
 interface BulkTriggerProps {
+  niche: string;
   pillar?: string;
   totalInPillar: number;
 }
 
-export function BulkTrigger({ pillar, totalInPillar }: BulkTriggerProps) {
+export function BulkTrigger({ niche, pillar, totalInPillar }: BulkTriggerProps) {
   const [running, setRunning] = useState(false);
   const [offset, setOffset] = useState(0);
   const [log, setLog] = useState<string[]>([]);
@@ -32,12 +33,11 @@ export function BulkTrigger({ pillar, totalInPillar }: BulkTriggerProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          website_domain: 'longevity-th.com',
+          niche,
           pillar: pillar ?? undefined,
           limit: 5,
           offset,
           concurrency: 3,
-          language: 'th',
         }),
       });
       const data: BulkResult = await res.json();

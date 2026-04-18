@@ -1,20 +1,28 @@
 import { NextResponse } from 'next/server';
-import { buildKeywordPlan, clusterByPillar, clusterByIntent } from '@/lib/seo/keywords';
+import { buildKeywordPlan, clusterByPillar, clusterByIntent, listNiches, NICHES } from '@/lib/seo/keywords';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/seo/plan
+ * GET /api/seo/plan?niche=longevity|protein|beauty
  * Returns the full keyword plan — no DB writes, safe to call freely.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  const nicheId = url.searchParams.get('niche') ?? 'longevity';
   const pillar = url.searchParams.get('pillar');
   const intent = url.searchParams.get('intent');
   const limit = Number(url.searchParams.get('limit') ?? '500');
 
-  const plan = buildKeywordPlan();
+  if (!NICHES[nicheId]) {
+    return NextResponse.json(
+      { ok: false, error: `Unknown niche: ${nicheId}`, available: Object.keys(NICHES) },
+      { status: 400 },
+    );
+  }
+
+  const plan = buildKeywordPlan(nicheId);
 
   let filtered = plan;
   if (pillar) filtered = filtered.filter((e) => e.pillar === pillar);
@@ -26,8 +34,11 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
+    niche: nicheId,
+    domain: NICHES[nicheId].domain,
     total: plan.length,
     filtered: filtered.length,
+    niches: listNiches(),
     clusters: {
       pillars: Object.keys(byPillar).map((p) => ({ pillar: p, count: byPillar[p].length })),
       by_intent: {
