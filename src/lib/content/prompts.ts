@@ -1,3 +1,4 @@
+import JSON5 from 'json5';
 import type { ChatMessage } from '@/lib/ai';
 
 export type ContentType = 'pillar' | 'listicle' | 'review' | 'comparison' | 'guide';
@@ -111,5 +112,11 @@ export function parseOutlineJson<T = unknown>(text: string): T {
   if (first >= 0 && last > first) {
     cleaned = cleaned.slice(first, last + 1);
   }
-  return JSON.parse(cleaned) as T;
+  // Strict JSON first (fast path). Fall back to JSON5 for Claude's Thai
+  // output quirks: trailing commas, unescaped newlines in string literals.
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch {
+    return JSON5.parse(cleaned) as T;
+  }
 }

@@ -159,6 +159,12 @@ async function WebsiteList() {
               >
                 ⚡ Insights
               </Link>
+              <Link
+                href={`/read/top-5-nmn-supplements-thailand-2026`}
+                className="rounded-md px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors"
+              >
+                📖 Read
+              </Link>
             </div>
           </CardContent>
         </Card>

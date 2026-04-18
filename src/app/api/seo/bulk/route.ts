@@ -96,7 +96,7 @@ export async function POST(req: Request) {
         tenantSlug: 'owner',
         websiteDomain: domain,
         provider: provider as ProviderName | undefined,
-        maxTokens: 4000,
+        maxTokens: 12000,
       }).then((result) => ({ entry, result })),
     );
 
