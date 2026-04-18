@@ -115,6 +115,8 @@ export default async function Home() {
           <span>·</span>
           <Link href="/insights" className="underline font-medium text-foreground">⚡ Loop Insights</Link>
           <span>·</span>
+          <Link href="/seo" className="underline font-medium text-foreground">🗂️ SEO Planner</Link>
+          <span>·</span>
           <a href="/api/health" className="underline">Health</a>
           <span>·</span>
           <a href="/api/ai/status" className="underline">AI Status</a>
