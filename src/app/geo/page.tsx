@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { scoreOutline, type GeoScore } from '@/lib/geo/score';
 import type { Outline } from '@/lib/content/generate';
+import { EnhanceButton } from './enhance-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -214,6 +215,7 @@ export default async function GeoPage({
                     <th className="px-4 py-2 font-medium">Grade</th>
                     <th className="px-4 py-2 font-medium w-56">Dimensions</th>
                     <th className="px-4 py-2 font-medium text-right">Score</th>
+                    <th className="px-4 py-2 font-medium text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -264,6 +266,13 @@ export default async function GeoPage({
                       </td>
                       <td className="px-4 py-3 text-right font-mono tabular-nums">
                         {p.score ? `${p.score.total}/100` : <span className="text-muted-foreground">error</span>}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {p.score && p.score.total < 85 ? (
+                          <EnhanceButton pageId={p.id} currentScore={p.score.total} />
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
