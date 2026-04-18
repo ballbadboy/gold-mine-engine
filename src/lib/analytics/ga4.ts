@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
 export interface GA4PageMetric {
@@ -26,8 +28,13 @@ function getPropertyId(): string | null {
 function getCredentials(): object | null {
   const raw = process.env.GA4_SERVICE_ACCOUNT_JSON;
   if (!raw) return null;
+  const trimmed = raw.trim();
   try {
-    return raw.trim().startsWith('{') ? JSON.parse(raw) : null;
+    // Inline JSON
+    if (trimmed.startsWith('{')) return JSON.parse(trimmed);
+    // File path (supports ~/ expansion)
+    const path = trimmed.startsWith('~/') ? trimmed.replace(/^~/, homedir()) : trimmed;
+    return JSON.parse(readFileSync(path, 'utf8'));
   } catch {
     return null;
   }
