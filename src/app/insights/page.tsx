@@ -8,6 +8,12 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_DOMAIN = 'longevity-th.com';
 
+async function getAllDomains(): Promise<string[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase.from('websites').select('domain').order('created_at');
+  return (data ?? []).map((w: { domain: string }) => w.domain);
+}
+
 interface Evidence {
   page_slug?: string;
   classification?: string;
@@ -98,8 +104,17 @@ async function getData(domain: string) {
   return { website, insights: rows, counts };
 }
 
-export default async function InsightsPage() {
-  const { website, insights, counts } = await getData(DEFAULT_DOMAIN);
+export default async function InsightsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ domain?: string }>;
+}) {
+  const { domain: qDomain } = await searchParams;
+  const domain = qDomain ?? DEFAULT_DOMAIN;
+  const [{ website, insights, counts }, allDomains] = await Promise.all([
+    getData(domain),
+    getAllDomains(),
+  ]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -116,10 +131,26 @@ export default async function InsightsPage() {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">⚡ Loop Insights</h1>
               <p className="mt-1 text-muted-foreground">
-                OODA loop · <span className="font-mono text-xs">{DEFAULT_DOMAIN}</span> · {insights.length} insights
+                OODA loop · <span className="font-mono text-xs">{domain}</span> · {insights.length} insights
               </p>
+              {/* Site switcher */}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {allDomains.map((d) => (
+                  <Link
+                    key={d}
+                    href={`/insights?domain=${d}`}
+                    className={`rounded px-2 py-0.5 text-xs font-mono border transition-colors ${
+                      d === domain
+                        ? 'bg-foreground text-background border-foreground'
+                        : 'border-border text-muted-foreground hover:border-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {d}
+                  </Link>
+                ))}
+              </div>
             </div>
-            {website && <LoopActions domain={DEFAULT_DOMAIN} />}
+            {website && <LoopActions domain={domain} />}
           </div>
         </header>
 

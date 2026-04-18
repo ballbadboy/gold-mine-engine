@@ -76,6 +76,11 @@ export default async function Home() {
         </section>
 
         <section className="mb-10">
+          <h2 className="mb-4 text-xl font-semibold">Websites</h2>
+          <WebsiteList />
+        </section>
+
+        <section className="mb-10">
           <Card>
             <CardHeader>
               <CardTitle>Tenants</CardTitle>
@@ -123,6 +128,40 @@ export default async function Home() {
         </footer>
       </div>
     </main>
+  );
+}
+
+async function WebsiteList() {
+  const supabase = createAdminClient();
+  const { data: websites } = await supabase
+    .from('websites')
+    .select('id, domain, niche, status')
+    .order('created_at', { ascending: true });
+
+  const sites = websites ?? [];
+  if (sites.length === 0) return <p className="text-sm text-muted-foreground">No websites yet.</p>;
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {sites.map((site: { id: string; domain: string; niche: string; status: string }) => (
+        <Card key={site.id}>
+          <CardContent className="flex items-center justify-between p-4">
+            <div>
+              <p className="font-mono text-sm font-medium">{site.domain}</p>
+              <p className="text-xs text-muted-foreground">{site.niche}</p>
+            </div>
+            <div className="flex gap-2">
+              <Link
+                href={`/insights?domain=${site.domain}`}
+                className="rounded-md px-2 py-1 text-xs font-medium bg-muted hover:bg-muted/70 transition-colors"
+              >
+                ⚡ Insights
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }
 
