@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -31,9 +32,9 @@ const SYSTEMS = [
   { name: 'Tailwind CSS 4', status: 'ok', note: 'PostCSS pipeline' },
   { name: 'shadcn/ui', status: 'ok', note: 'base-nova + neutral' },
   { name: 'Supabase', status: 'pending', note: 'checking...' },
-  { name: 'Claude API', status: 'off', note: 'Sprint 2' },
-  { name: 'GA4 MCP', status: 'off', note: 'Sprint 2' },
-  { name: 'OODA Loop', status: 'off', note: 'Sprint 3' },
+  { name: 'Claude / Gemini / OR', status: 'ok', note: 'Auto-fallback chain' },
+  { name: 'GA4', status: 'pending', note: 'Add service account viewer' },
+  { name: 'OODA Loop', status: 'ok', note: 'Sprint 4 ✓' },
 ] as const;
 
 export default async function Home() {
@@ -54,7 +55,7 @@ export default async function Home() {
               Self-optimizing growth system — affiliate + SEO + ads loop
             </p>
           </div>
-          <Badge variant="secondary" className="text-sm">Sprint 1 · Foundation</Badge>
+          <Badge variant="secondary" className="text-sm">Sprint 4 · OODA Loop ✓</Badge>
         </header>
 
         <section className="mb-10">
@@ -110,13 +111,13 @@ export default async function Home() {
         </section>
 
         <footer className="flex items-center justify-center gap-4 text-center text-xs text-muted-foreground">
-          <a href="/content" className="underline">Content Library</a>
+          <Link href="/content" className="underline">Content Library</Link>
+          <span>·</span>
+          <Link href="/insights" className="underline font-medium text-foreground">⚡ Loop Insights</Link>
           <span>·</span>
           <a href="/api/health" className="underline">Health</a>
           <span>·</span>
           <a href="/api/ai/status" className="underline">AI Status</a>
-          <span>·</span>
-          <a href="/api/content" className="underline">Content API</a>
         </footer>
       </div>
     </main>
