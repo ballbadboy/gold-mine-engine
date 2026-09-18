@@ -164,6 +164,10 @@ export function MarketingWorkspace() {
         </a>
         <span className="gm-nav-label">พื้นที่ทำงาน</span>
         <nav aria-label="การตลาด">
+          <a className="gm-admin-link" href="/admin-ai">
+            <Users size={18} />
+            AI แอดมิน
+          </a>
           {navigation.map(({ id, label, icon: Icon }) => (
             <button
               key={id}

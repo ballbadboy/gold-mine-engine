@@ -18,7 +18,7 @@ export async function POST(request: Request) {
           "โหลดตัวอย่างได้เฉพาะพื้นที่สาธิตที่ว่าง",
           409,
         );
-      Object.assign(state, exampleState());
+      Object.assign(state, exampleState(), { support: state.support });
     });
     return Response.json({ ok: true });
   } catch (error) {

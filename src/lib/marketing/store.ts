@@ -33,7 +33,12 @@ function validateSize(state: State) {
     state.events.length +
     state.clicks.length +
     state.audit.length +
-    state.spend.length;
+    state.spend.length +
+    state.support.threads.reduce(
+      (sum, thread) => sum + thread.messages.length,
+      0,
+    ) +
+    state.support.activity.length;
   if (records > 20_000 || Buffer.byteLength(JSON.stringify(state)) > 8_000_000)
     throw new MarketingError(
       "พื้นที่นำร่องเต็ม ต้องย้ายประวัติไปตาราง events ก่อนรับข้อมูลเพิ่ม",

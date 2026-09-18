@@ -47,7 +47,7 @@ export class GeminiProvider implements LLMProvider {
     if (!last) throw new Error('No user message provided');
 
     const chat = model.startChat({ history });
-    const response = await chat.sendMessage(last.content);
+    const response = await chat.sendMessage(last.content, { signal: options.signal });
     const text = response.response.text();
     const usage = response.response.usageMetadata;
 

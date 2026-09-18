@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { emptySupport, supportStateSchema } from "../support/model";
 
 export const currencies = [
   "THB",
@@ -166,6 +167,7 @@ const savedEvent = z.object({
 export const stateSchema = z
   .object({
     version: z.literal(1),
+    support: supportStateSchema.default(emptySupport),
     partners: z.array(partnerSchema),
     campaigns: z.array(campaignSchema),
     links: z.array(linkSchema),
@@ -191,6 +193,7 @@ export type EventInput = z.infer<typeof eventInput>;
 export type Currency = z.infer<typeof currencySchema>;
 export const emptyState = (): State => ({
   version: 1,
+  support: emptySupport(),
   partners: [],
   campaigns: [],
   links: [],

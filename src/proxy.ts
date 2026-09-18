@@ -12,6 +12,8 @@ export function proxy(request: NextRequest) {
     process.env.NODE_ENV !== "production";
   const publicRoute =
     pathname === "/login" ||
+    pathname === "/help" ||
+    pathname === "/api/support" ||
     pathname === "/api/session" ||
     pathname === "/api/marketing/events" ||
     pathname.startsWith("/go/") ||
@@ -22,6 +24,10 @@ export function proxy(request: NextRequest) {
     const allowed =
       pathname === "/" ||
       pathname === "/marketing" ||
+      pathname === "/admin-ai" ||
+      pathname === "/api/admin-ai" ||
+      pathname === "/help" ||
+      pathname === "/api/support" ||
       pathname === "/api/marketing" ||
       pathname === "/api/marketing/export" ||
       pathname === "/api/marketing/demo" ||

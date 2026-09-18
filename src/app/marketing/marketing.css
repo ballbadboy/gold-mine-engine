@@ -61,6 +61,14 @@
   display: grid;
   gap: 6px;
 }
+.gm-admin-link {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 13px;
+  color: #65725f;
+  text-decoration: none;
+}
 .gm-sidebar nav button {
   display: flex;
   gap: 12px;

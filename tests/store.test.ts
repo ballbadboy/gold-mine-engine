@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { readState, transact } from "../src/lib/marketing/store";
 import { applyCommand } from "../src/lib/marketing/domain";
+import { reserveAI } from "../src/lib/support/domain";
 
 test("file transactions persist concurrently without losing records; failures do not commit", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "gold-mine-test-"));
@@ -58,5 +59,22 @@ test("production refuses the file adapter", async () => {
   } finally {
     if (prior === undefined) Reflect.deleteProperty(process.env, "NODE_ENV");
     else Object.assign(process.env, { NODE_ENV: prior });
+  }
+});
+test("concurrent support requests cannot exceed a shared persisted AI call budget", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "gold-mine-ai-budget-"));
+  process.env.MARKETING_STORE = "file";
+  process.env.MARKETING_DATA_DIR = dir;
+  const now = new Date("2026-09-18T12:00:00Z");
+  try {
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () =>
+        transact((state) => reserveAI(state.support, 3, now)),
+      ),
+    );
+    assert.equal(results.filter(Boolean).length, 3);
+    assert.equal((await readState()).support.usage[0].aiCalls, 3);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
   }
 });

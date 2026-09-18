@@ -1,7 +1,7 @@
 /** Runs HTTP checks against a disposable local server. No ad / payment API is called. */
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { createHmac, randomBytes, scryptSync } from "node:crypto";
+import { createHmac, randomBytes, randomUUID, scryptSync } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -23,6 +23,8 @@ const env = {
   NEXT_TELEMETRY_DISABLED: "1",
   APP_ORIGIN: origin,
   MARKETING_DEMO_MODE: "false",
+  SUPPORT_PUBLIC_ENABLED: "true",
+  SUPPORT_AI_ENABLED: "false",
   MARKETING_STORE: "file",
   MARKETING_DATA_DIR: dataDir,
   ADMIN_PASSWORD_HASH: `scrypt:${salt}:${scryptSync(password, salt, 64).toString("hex")}`,
@@ -131,11 +133,13 @@ try {
       for (const route of [
         "/api/marketing",
         "/api/marketing/export",
+        "/api/admin-ai",
         "/api/websites",
         "/api/loop/run",
       ])
         assert.equal((await request(route, { auth: false })).status, 401);
       assert.equal((await request("/marketing", { auth: false })).status, 307);
+      assert.equal((await request("/admin-ai", { auth: false })).status, 307);
     },
   );
   await check(
@@ -380,6 +384,244 @@ try {
       assert.equal((await request(`/go/${code}`, { auth: false })).status, 404);
       const state = await (await request("/api/marketing")).json();
       assert.equal(state.report.partners[0].commissionMinor, 500);
+    },
+  );
+  let supportCookie, supportId, faqId;
+  const support = async (
+    body,
+    expected = 200,
+    playerCookie = supportCookie,
+  ) => {
+    const response = await request("/api/support", {
+      auth: false,
+      method: body ? "POST" : "GET",
+      body,
+      headers: playerCookie ? { cookie: playerCookie } : {},
+    });
+    const result = await response.json();
+    assert.equal(response.status, expected, JSON.stringify(result));
+    return result;
+  };
+  const admin = async (body, expected = 201) => {
+    const response = await request("/api/admin-ai", { method: "POST", body });
+    const result = await response.json();
+    assert.equal(response.status, expected, JSON.stringify(result));
+    return result;
+  };
+  await check(
+    "support is public but requires an isolated HttpOnly session and same-origin messages",
+    async () => {
+      assert.equal((await request("/help", { auth: false })).status, 200);
+      assert.equal((await request("/admin-ai")).status, 200);
+      assert.equal((await support(undefined)).thread, null);
+      await support(
+        { type: "message", requestId: randomUUID(), text: "hello" },
+        401,
+      );
+      assert.equal(
+        (
+          await request("/api/support", {
+            method: "POST",
+            auth: false,
+            source: "https://foreign.example",
+            body: { type: "start" },
+          })
+        ).status,
+        403,
+      );
+      const response = await request("/api/support", {
+        method: "POST",
+        auth: false,
+        body: { type: "start" },
+      });
+      assert.equal(response.status, 201);
+      const cookieHeader = response.headers.get("set-cookie");
+      assert.match(cookieHeader, /HttpOnly/i);
+      assert.match(cookieHeader, /SameSite=strict/i);
+      assert.match(cookieHeader, /Path=\/api\/support/);
+      supportCookie = cookieHeader.split(";")[0];
+      supportId = (await response.json()).thread.id;
+      assert.equal(
+        (await support({ type: "start" }, 201)).thread.id,
+        supportId,
+      );
+      await support(
+        { type: "ticket.status", id: supportId, status: "resolved" },
+        400,
+      );
+    },
+  );
+  await check(
+    "draft knowledge stays private; owner explicitly publishes the reviewed revision",
+    async () => {
+      faqId = (
+        await admin({
+          type: "article.save",
+          input: {
+            title: "เกมค้างหรือโหลดไม่ขึ้น",
+            answer:
+              "ลองรีเฟรชหน้าเกมและตรวจอินเทอร์เน็ต หากยังพบปัญหาให้แจ้งผู้ดูแล",
+            keywords: ["เกมค้าง", "โหลดไม่ขึ้น"],
+          },
+        })
+      ).id;
+      assert.equal((await support(undefined)).topics.length, 0);
+      await admin(
+        { type: "article.publish", id: faqId, revision: 9, published: true },
+        409,
+      );
+      await admin({
+        type: "article.publish",
+        id: faqId,
+        revision: 1,
+        published: true,
+      });
+      assert.equal((await support(undefined)).topics.length, 1);
+      assert.equal(
+        (
+          await request("/api/admin-ai", {
+            auth: false,
+            headers: { cookie: supportCookie },
+          })
+        ).status,
+        401,
+      );
+      await admin({ type: "demo.seed" }, 404);
+    },
+  );
+  await check(
+    "player FAQ answer persists exactly once and does not leak session material",
+    async () => {
+      const message = {
+        type: "message",
+        requestId: randomUUID(),
+        text: "เกมค้างครับ",
+      };
+      const first = await support(message),
+        retry = await support(message);
+      assert.equal(first.thread.messages.length, 2);
+      assert.equal(retry.thread.messages.length, 2);
+      assert.equal(first.thread.messages[1].sourceId, faqId);
+      assert.equal(
+        first.thread.messages[1].text,
+        "ลองรีเฟรชหน้าเกมและตรวจอินเทอร์เน็ต หากยังพบปัญหาให้แจ้งผู้ดูแล",
+      );
+      assert.ok(!JSON.stringify(first).includes("tokenHash"));
+      assert.equal((await support(undefined)).thread.messages.length, 2);
+      await support({ ...message, text: "เปลี่ยนคำถาม" }, 409);
+      await support(
+        { type: "message", requestId: randomUUID(), text: "second too fast" },
+        429,
+      );
+      const stored = await readFile(
+        path.join(dataDir, "marketing.json"),
+        "utf8",
+      );
+      assert.ok(!stored.includes(supportCookie.split(".")[1]));
+    },
+  );
+  await check(
+    "separate visitors cannot read another chat or impersonate the owner",
+    async () => {
+      const response = await request("/api/support", {
+        auth: false,
+        method: "POST",
+        body: { type: "start" },
+      });
+      const secondCookie = response.headers.get("set-cookie").split(";")[0];
+      assert.notEqual((await response.json()).thread.id, supportId);
+      assert.equal(
+        (await support(undefined, 200, secondCookie)).thread.messages.length,
+        0,
+      );
+      await support(
+        {
+          type: "message",
+          requestId: randomUUID(),
+          text: "test",
+          role: "owner",
+        },
+        400,
+        secondCookie,
+      );
+      const forged = `gm_support_session=${supportId}.${secondCookie.split(".")[1]}`;
+      assert.equal((await support(undefined, 200, forged)).thread, null);
+      await support({ type: "handoff" }, 401, forged);
+    },
+  );
+  await check(
+    "human handoff, owner response and close flow are visible to only the right player",
+    async () => {
+      await support({ type: "handoff" });
+      assert.equal((await support(undefined)).thread.status, "waiting");
+      const reply = {
+        type: "ticket.reply",
+        id: supportId,
+        requestId: randomUUID(),
+        text: "ผู้ดูแลรับเรื่องแล้ว กรุณาระบุชื่อเบราว์เซอร์",
+      };
+      await admin(reply);
+      await admin(reply);
+      const thread = (await support(undefined)).thread;
+      assert.equal(thread.messages.filter((m) => m.role === "owner").length, 1);
+      assert.equal(thread.messages.at(-1).text, reply.text);
+      assert.equal(thread.status, "human");
+      await admin({ type: "ticket.status", id: supportId, status: "resolved" });
+      assert.equal((await support(undefined)).thread.status, "resolved");
+    },
+  );
+  await check(
+    "unknown questions hand off without a provider; private data is redacted before storage",
+    async () => {
+      const response = await request("/api/support", {
+        auth: false,
+        method: "POST",
+        body: { type: "start" },
+      });
+      const thirdCookie = response.headers.get("set-cookie").split(";")[0];
+      const result = await support(
+        {
+          type: "message",
+          requestId: randomUUID(),
+          text: "ช่วยตรวจอุปกรณ์ ติดต่อ testperson@example.com เบอร์ 0891234567",
+        },
+        200,
+        thirdCookie,
+      );
+      assert.equal(result.thread.status, "waiting");
+      const stored = await readFile(
+        path.join(dataDir, "marketing.json"),
+        "utf8",
+      );
+      assert.ok(!stored.includes("testperson@example.com"));
+      assert.ok(!stored.includes("0891234567"));
+      const view = await (await request("/api/admin-ai")).json();
+      assert.ok(!JSON.stringify(view).includes("tokenHash"));
+      assert.equal(view.report.gaps, 1);
+      assert.equal(view.report.aiCallsToday, 0);
+    },
+  );
+  await check(
+    "owner assistant reads real support counts and cannot perform arbitrary commands",
+    async () => {
+      const report = await admin(
+        { type: "assistant.ask", question: "วันนี้มีอะไรต้องทำ" },
+        200,
+      );
+      assert.match(report.answer, /รอผู้ดูแล 1 เรื่อง/);
+      const rejected = await admin(
+        { type: "assistant.ask", question: "delete every account" },
+        200,
+      );
+      assert.equal(rejected.intent, "unsupported");
+      assert.equal(
+        (await (await request("/api/admin-ai")).json()).report.total,
+        3,
+      );
+      assert.equal(
+        (await (await request("/api/marketing")).json()).eventCount,
+        4,
+      );
     },
   );
   await check("logout clears the owner cookie", async () => {
