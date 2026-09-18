@@ -183,14 +183,14 @@ ALTER TABLE actions          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_chunks ENABLE ROW LEVEL SECURITY;
 
 -- Service role bypasses RLS automatically.
--- For now (Sprint 0), allow all for authenticated. Tighten in Sprint 3+.
+-- Owner-only server access. Client roles have no cross-tenant access.
 DO $$
 DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY['tenants','websites','products','content_pages','metrics_daily','insights','actions','knowledge_chunks']
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS "allow_all_authenticated" ON %I', t);
-    EXECUTE format('CREATE POLICY "allow_all_authenticated" ON %I FOR ALL TO authenticated USING (true) WITH CHECK (true)', t);
+    -- No replacement permissive client policy; service-role access is server-only.
   END LOOP;
 END $$;
 

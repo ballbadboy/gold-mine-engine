@@ -10,22 +10,22 @@ export const dynamic = 'force-dynamic';
  * Serves markdown that Perplexity, ChatGPT, Claude, Gemini can ingest to
  * understand the site structure and find primary content.
  *
- * Supports ?domain=<site> to scope to a specific website.
+ * Scoped by PUBLIC_CONTENT_WEBSITE_ID; query parameters cannot select another website.
  */
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const domain = url.searchParams.get('domain') ?? 'longevity-th.com';
+export async function GET() {
+  const websiteId = process.env.PUBLIC_CONTENT_WEBSITE_ID;
+  if (!websiteId) return new Response('Not found', { status: 404 });
 
   const supabase = createAdminClient();
 
   const { data: website } = await supabase
     .from('websites')
     .select('id, domain, niche')
-    .eq('domain', domain)
+    .eq('id', websiteId)
     .single();
 
   if (!website) {
-    return new Response(`# Site not found\n\nDomain: ${domain}\n`, {
+    return new Response('Not found', {
       status: 404,
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
     .from('content_pages')
     .select('slug, title, meta_description, type, status, created_at')
     .eq('website_id', website.id)
-    .in('status', ['published', 'draft'])
+    .eq('status', 'published')
     .order('created_at', { ascending: false })
     .limit(200);
 
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
     lines.push('');
     for (const p of items) {
       const desc = p.meta_description ? `: ${p.meta_description.slice(0, 160)}` : '';
-      lines.push(`- [${p.title}](https://${website.domain}/${p.slug})${desc}`);
+      lines.push(`- [${p.title}](https://${website.domain}/read/${p.slug})${desc}`);
     }
     lines.push('');
   }

@@ -13,6 +13,8 @@ export interface GenerateOptions {
   maxTokens?: number;
   temperature?: number;
   stream?: false;
+  signal?: AbortSignal;
+  maxRetries?: number;
 }
 
 export interface GenerateResult {

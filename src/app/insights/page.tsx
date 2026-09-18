@@ -184,19 +184,10 @@ export default async function InsightsPage({
             <CardHeader>
               <p className="font-medium">No insights yet</p>
               <p className="text-sm text-muted-foreground">
-                Click <strong>🌱 Seed Mock Data</strong> then <strong>⚡ Run Analysis</strong> above to generate your first loop.
+                Import and verify analytics data for this website before running analysis. Demo data is isolated in the Marketing Workspace.
               </p>
             </CardHeader>
-            <CardContent>
-              <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs">{`# Or via curl:
-curl -X POST http://localhost:3000/api/loop/seed \\
-  -H "Content-Type: application/json" \\
-  -d '{"website_domain":"longevity-th.com","days":30}'
 
-curl -X POST http://localhost:3000/api/loop/run \\
-  -H "Content-Type: application/json" \\
-  -d '{"website_domain":"longevity-th.com","ai_enrich_top_n":5}'`}</pre>
-            </CardContent>
           </Card>
         )}
 

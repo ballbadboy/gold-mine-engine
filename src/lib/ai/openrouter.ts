@@ -47,7 +47,7 @@ export class OpenRouterProvider implements LLMProvider {
       messages: oaMessages,
       max_tokens: options.maxTokens ?? 1024,
       temperature: options.temperature ?? 0.7,
-    });
+    }, { signal: options.signal, maxRetries: options.maxRetries });
 
     const text = response.choices[0]?.message?.content ?? '';
 

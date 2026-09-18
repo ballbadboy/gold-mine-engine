@@ -39,7 +39,7 @@ export class ClaudeProvider implements LLMProvider {
         role: m.role === 'assistant' ? 'assistant' : 'user',
         content: m.content,
       })),
-    });
+    }, { signal: options.signal, maxRetries: options.maxRetries });
 
     const text = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
