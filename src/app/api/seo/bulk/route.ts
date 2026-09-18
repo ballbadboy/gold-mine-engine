@@ -1,3 +1,4 @@
+import { concurrentPool } from '@/lib/concurrent-pool';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { buildKeywordPlan, getNicheConfig, NICHES } from '@/lib/seo/keywords';
@@ -19,34 +20,6 @@ const bodySchema = z.object({
   provider: z.enum(['claude', 'gemini', 'openrouter']).optional(),
   language: z.enum(['th', 'en']).optional(),                   // overrides niche default
 });
-
-/** Run at most `concurrency` async tasks in parallel, queue the rest. */
-async function concurrentPool<T>(
-  tasks: Array<() => Promise<T>>,
-  concurrency: number,
-): Promise<Array<{ ok: true; value: T } | { ok: false; error: string }>> {
-  const results: Array<{ ok: true; value: T } | { ok: false; error: string }> = [];
-  const queue = [...tasks];
-
-  async function runNext(): Promise<void> {
-    const task = queue.shift();
-    if (!task) return;
-    try {
-      const value = await task();
-      results.push({ ok: true, value });
-    } catch (e: unknown) {
-      results.push({ ok: false, error: e instanceof Error ? e.message : String(e) });
-    }
-    await runNext();
-  }
-
-  const running: Promise<void>[] = [];
-  for (let i = 0; i < Math.min(concurrency, tasks.length); i++) {
-    running.push(runNext());
-  }
-  await Promise.all(running);
-  return results;
-}
 
 export async function POST(req: Request) {
   try {

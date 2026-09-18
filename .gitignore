@@ -47,3 +47,10 @@ next-env.d.ts
 # Claude Code runtime
 .omc/
 .claude/
+
+# Local marketing data and browser test output
+/.data/
+/playwright-report/
+/test-results/
+
+.env.local.*.tmp

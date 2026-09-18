@@ -14,12 +14,8 @@ export const maxDuration = 300;
  * Set CRON_SECRET in Vercel env vars. Manual calls without the header are rejected.
  */
 export async function GET(req: Request) {
-  // Auth: in production, Vercel injects the CRON_SECRET.
-  const authHeader = req.headers.get('authorization');
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
-  const isVercelCron = req.headers.get('x-vercel-cron') === '1';
-
-  if (process.env.NODE_ENV === 'production' && !isVercelCron && authHeader !== expected) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || secret.length < 32 || req.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 

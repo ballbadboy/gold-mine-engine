@@ -1,50 +1,66 @@
 # Gold Mine Engine
 
-> Self-optimizing growth system — affiliate + SEO + ads loop that learns from its own data.
+พื้นที่จัดการการตลาดสำหรับผู้ดูแล: วางแคมเปญ จัดการพาร์ตเนอร์ ติดตามสมัคร/ฝากเงิน และเปรียบเทียบรายได้กับต้นทุน
 
-## Status
+**สถานะ: Marketing Workspace — รุ่นนำร่องสำหรับเจ้าของระบบคนเดียว**
 
-🚧 **Sprint 0:** Foundation (Next.js 16 + Supabase + Claude API)
+## ทำอะไรได้แล้ว
 
-## Stack
+- แคมเปญ Meta / Google / Affiliate / Organic: ประเทศ สกุลเงิน งบประมาณ เว็บไซต์ และสถานะร่าง/อนุมัติภายใน/พัก
+- พาร์ตเนอร์พร้อมค่าตอบแทนคงที่ต่อผู้ฝากครั้งแรก (CPA) และลิงก์แยกพาร์ตเนอร์
+- ลิงก์ `/go/:code` พร้อมรหัสคลิกและ UTM ส่งต่อไปยังเว็บไซต์ที่กำหนด
+- รับผลสมัคร ฝากครั้งแรก ฝากครั้งถัดไป และรายได้สุทธิจากระบบเกมผ่าน webhook ที่ลงลายเซ็น
+- ป้องกันรับ event ซ้ำ นับผู้สมัคร/ผู้ฝากครั้งแรกไม่ซ้ำ แยกยอดฝากออกจากรายได้
+- บันทึกค่าโฆษณารายวัน คำนวณต้นทุนรวมคอมมิชชัน ต้นทุนต่อผู้ฝาก ROI และ ROAS แยกสกุลเงิน
+- Dashboard ภาษาไทย ส่งออกรายงาน CSV และแผนแคมเปญ JSON
+- เข้าสู่ระบบสำหรับเจ้าของระบบ พร้อม Supabase migration และโหมดสาธิตแยกข้อมูล
 
-- **Framework:** Next.js 16 (App Router) + TypeScript + Tailwind CSS 4
-- **Package Manager:** pnpm
-- **Database:** Supabase (Postgres + pgvector)
-- **AI:** Claude (primary) / Gemini Flash (bulk) / OpenRouter (fallback)
-- **Hosting:** Vercel
+**การยิงโฆษณารุ่นนี้เป็นการวางแผนและส่งออก brief ยังไม่มีตัวเชื่อมส่งโฆษณาหรือดึงค่าใช้จ่ายจาก Meta/Google จริง** สถานะ “อนุมัติในระบบ” ไม่ใช่การอนุมัติจากแพลตฟอร์ม ไม่มีการใช้เงิน จ่ายค่าพาร์ตเนอร์ หรือทำธุรกรรมฝากถอนจากแอปนี้
 
-## Quick Start
+## ทดลองในเครื่อง
 
-```bash
-pnpm install
-cp .env.example .env.local    # fill in values
-pnpm dev                       # http://localhost:3000
+ต้องใช้ Node.js 22+ และ pnpm 10.33.0
+
+```sh
+pnpm install --frozen-lockfile
+pnpm demo
 ```
 
-## Project Structure
+เปิด [Marketing Workspace](http://127.0.0.1:3100/marketing) แล้วกด **โหลดข้อมูลตัวอย่าง** โหมดนี้ไม่ต้องใช้บัญชีโฆษณาหรือฐานข้อมูลจริง ข้อมูลอยู่ใน `.data/marketing-demo.json` ซึ่งไม่ถูกส่งขึ้น Git ระบบสาธิตไม่รับ webhook จากระบบจริง และไม่เปิดใช้เมื่อรัน production
 
-```
-gold-mine-engine/
-├── src/
-│   ├── app/              # Next.js App Router
-│   ├── components/       # UI components
-│   ├── lib/              # Shared utilities
-│   │   ├── supabase/     # DB client
-│   │   ├── ai/           # LLM providers
-│   │   └── loop/         # OODA loop engine
-│   └── types/            # TypeScript types
-├── public/               # Static assets
-├── .env.example          # Environment template
-└── .env.local            # Your secrets (git-ignored)
+## เริ่มเชื่อมระบบจริง
+
+อ่าน [คู่มือตั้งค่าและเชื่อมระบบเกม](docs/MARKETING-WORKSPACE.md) ก่อนตั้งค่าฐานข้อมูลและบัญชีผู้ดูแล กำหนดประเทศเป้าหมายและเอกสารสิทธิ์ของตลาด/แพลตฟอร์มตามแคมเปญ แทนการถือว่าอาเซียนใช้ข้อกำหนดเดียวกัน
+
+```sh
+cp .env.example .env.local
+pnpm setup:admin
+# ตั้งค่า Supabase, APP_ORIGIN และกุญแจ webhook ใน .env.local
+pnpm dev
 ```
 
-## Related
+หน้าแรกเปิด `/marketing` ส่วนเครื่องมือ SEO / Content / GEO / Loop เดิมอยู่ที่ `/system`, `/seo`, `/content`, `/geo`, `/insights` และต้องเข้าสู่ระบบผู้ดูแล
 
-- **Strategy:** See `../../01-Strategy/` (Obsidian vault in parent folder)
-- **Tech Architecture:** `../../03-Execution/Tech-Architecture.md`
-- **Shopee Bot (reference):** github.com/ballbadboy/shopee-affiliate-bot
+## ตรวจสอบก่อนส่งงาน
+
+```sh
+pnpm check
+pnpm test:integration
+```
+
+`check` ตรวจ lint, TypeScript, unit/database tests และ production build ส่วน `test:integration` เปิดเซิร์ฟเวอร์ชั่วคราวและทดสอบ HTTP ครบเส้นทางด้วยข้อมูลจำลอง ไม่เรียกบริการภายนอก ให้หยุด `pnpm dev` / `pnpm demo` ใน checkout เดียวกันก่อนรัน integration เพราะ Next.js ใช้ development lock ร่วมกัน
+
+ดู [ขอบเขตการทดสอบและข้อจำกัด](docs/VALIDATION.md) ข้อมูลบน Dashboard จะถูกต้องตามข้อมูลที่หลังบ้านส่งมา ต้องกระทบยอดกับข้อมูลต้นทางก่อนใช้ตัดสินใจด้วยเงินจริง
+
+## โครงสร้าง
+
+- `src/app/marketing` — หน้าจอการตลาด
+- `src/lib/marketing` — กติกาธุรกิจ การวัดผล และที่เก็บข้อมูล
+- `src/lib/auth`, `src/proxy.ts` — การเข้าสู่ระบบและควบคุมทางเข้า
+- `src/app/api/marketing`, `src/app/go` — API / webhook / tracking redirect
+- `supabase/migrations` — ตารางและการบันทึกพร้อมกันใน Postgres
+- `tests` — การคำนวณ ความปลอดภัย การบันทึก และ HTTP integration
 
 ## License
 
-Private. Do not distribute.
+สิทธิ์การใช้งานโค้ดยังคงตามเจ้าของโครงการ ไม่มีการเพิ่มใบอนุญาต open-source ในการเปลี่ยนแปลงนี้

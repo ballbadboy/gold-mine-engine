@@ -1,3 +1,4 @@
+import { aggregate, type PeriodStats } from './metrics';
 import { generate, type ProviderName } from '@/lib/ai';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -11,18 +12,6 @@ interface PageAggregate {
   first_half: PeriodStats;
   second_half: PeriodStats;
   total: PeriodStats;
-}
-
-interface PeriodStats {
-  days: number;
-  clicks: number;
-  impressions: number;
-  sessions: number;
-  conversions: number;
-  revenue: number;
-  avg_ctr: number;
-  avg_position: number;
-  avg_bounce: number;
 }
 
 export type Classification = 'winner' | 'loser' | 'sleeper' | 'steady';
@@ -58,36 +47,6 @@ const LOSER_GROWTH = 0.6;      // 40%+ decline
 const SLEEPER_MIN_SPIKE = 2.5; // occasional 2.5x days on low baseline
 const HIGH_BOUNCE = 0.78;
 const MIN_EVIDENCE_CLICKS = 20; // below this = not enough signal
-
-function aggregate(rows: Array<{ date: string; clicks: number; impressions: number; sessions: number; conversions: number; revenue: number; ctr: number; position: number; bounce_rate: number }>): PeriodStats {
-  if (rows.length === 0) {
-    return { days: 0, clicks: 0, impressions: 0, sessions: 0, conversions: 0, revenue: 0, avg_ctr: 0, avg_position: 0, avg_bounce: 0 };
-  }
-  const sum = rows.reduce(
-    (acc, r) => ({
-      clicks: acc.clicks + r.clicks,
-      impressions: acc.impressions + r.impressions,
-      sessions: acc.sessions + r.sessions,
-      conversions: acc.conversions + r.conversions,
-      revenue: acc.revenue + Number(r.revenue ?? 0),
-      ctr: acc.ctr + Number(r.ctr ?? 0),
-      position: acc.position + Number(r.position ?? 0),
-      bounce: acc.bounce + Number(r.bounce_rate ?? 0),
-    }),
-    { clicks: 0, impressions: 0, sessions: 0, conversions: 0, revenue: 0, ctr: 0, position: 0, bounce: 0 }
-  );
-  return {
-    days: rows.length,
-    clicks: sum.clicks,
-    impressions: sum.impressions,
-    sessions: sum.sessions,
-    conversions: sum.conversions,
-    revenue: sum.revenue,
-    avg_ctr: sum.ctr / rows.length,
-    avg_position: sum.position / rows.length,
-    avg_bounce: sum.bounce / rows.length,
-  };
-}
 
 function classify(agg: PageAggregate): { classification: Classification; signal_strength: number; scores: PageInsight['scores'] } {
   const { first_half, second_half, total } = agg;

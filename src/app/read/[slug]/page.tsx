@@ -1,5 +1,7 @@
+import { serializeJsonLd } from '@/lib/content/json-ld';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Outline } from '@/lib/content/generate';
 import { LONGEVITY_PRODUCTS, primaryLink, type AffiliateProduct } from '@/lib/affiliate/products';
@@ -34,11 +36,15 @@ export async function generateMetadata({ params }: PageProps) {
 // ─── Data ───────────────────────────────────────────────────────────────────
 
 async function loadPage(slug: string): Promise<{ outline: Outline; updated_at: string } | null> {
+  const websiteId = process.env.PUBLIC_CONTENT_WEBSITE_ID;
+  if (!websiteId) return null;
   const supabase = createAdminClient();
   const { data } = await supabase
     .from('content_pages')
     .select('slug, body_mdx, updated_at')
     .eq('slug', slug)
+    .eq('website_id', websiteId)
+    .eq('status', 'published')
     .maybeSingle();
 
   if (!data?.body_mdx) return null;
@@ -124,7 +130,7 @@ export default async function ArticlePage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <main className="bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
 
@@ -194,7 +200,9 @@ export default async function ArticlePage({ params }: PageProps) {
                 <h2 className="font-serif text-3xl font-bold tracking-tight mb-6 text-stone-900 dark:text-stone-50">
                   {section.h2}
                 </h2>
-                {section.key_points && section.key_points.length > 0 && (
+                {(section as typeof section & { expanded_text?: string }).expanded_text ? (
+                  <div className="space-y-4 text-lg leading-relaxed"><ReactMarkdown skipHtml>{(section as typeof section & { expanded_text: string }).expanded_text}</ReactMarkdown></div>
+                ) : section.key_points && section.key_points.length > 0 ? (
                   <ul className="space-y-3 text-lg leading-relaxed text-stone-700 dark:text-stone-300">
                     {section.key_points.map((point, j) => (
                       <li key={j} className="flex gap-4">
@@ -203,7 +211,7 @@ export default async function ArticlePage({ params }: PageProps) {
                       </li>
                     ))}
                   </ul>
-                )}
+                ) : null}
                 {/* Mid-article product card — insert after every 3rd section */}
                 {i > 0 && (i + 1) % 3 === 0 && products[Math.floor(i / 3)] && (
                   <div className="mt-10 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6">
